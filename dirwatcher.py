@@ -13,6 +13,7 @@ formater = logging.Formatter(
     '%(asctime)s %(levelname)s %(threadName)s %(message)s')
 handler.setFormatter(formater)
 logger.addHandler(handler)
+file_dict = {}
 
 
 def signal_handler(sig_num, frame):
@@ -40,17 +41,63 @@ def log_start():
                 '\nStarting dirwatcher.py' + '\n' + 40 * '-')
 
 
-def check_dir(dir):
+def check_dir(args):
     # watcher function
+    if not os.path.exists(args.dir):
+        logger.error(args.dir + " is a dir that doesn't exist!")
+        return
+    check_files(args)
+    pass
+
+
+def init_dict(args):
+    global file_dict
+    if os.path.exists(args.dir):
+        for filename in os.listdir(args.dir):
+            file_dict[filename] = 'blank'
+    pass
+
+
+def check_files(args):
+    global file_dict
+    check_dict = {}
+    for filename in os.listdir(args.dir):
+        check_dict[filename] = 'blank'
+    if file_dict != check_dict:
+        detect_added_files(check_dict)
+        detect_removed_files(check_dict)
+    file_dict = check_dict
+    scan_dict(args)
+    pass
+
+
+def scan_dictargs
+
+
+pass
+
+
+def detect_added_files(check_dict):
+    for filename in check_dict:
+        if filename not in file_dict:
+            logger.info(filename + ' added to watched directory')
+    pass
+
+
+def detect_removed_files(check_dict):
+    for filename in file_dict:
+        if filename not in check_dict:
+            logger.info(filename + ' removed from watched directory')
     pass
 
 
 def create_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('dir', help='directory to watch')
-    parser.add_argument('ext', help='file extension to filter')
-    parser.add_argument('int', help='polling interval')
-    parser.add_argument('magic', help='magic text to scan for')
+    parser.add_argument('--ext', help='file extension to filter')
+    parser.add_argument('--magic', help='magic text to scan for', type=str)
+    parser.add_argument('--int', nargs="?", const=1, default=1,
+                        type=int, help='polling interval')
     return parser
 
 
@@ -69,9 +116,10 @@ def main(args):
         log_close(time.time()-start_time)
         sys.exit(1)
     parsed_args = parser.parse_args(args)
+    init_dict(parsed_args)
     while not exit_flag:
         try:
-            check_dir(parsed_args.dir)
+            check_dir(parsed_args)
             pass
         except Exception as e:
             logger.error(e)
@@ -80,7 +128,7 @@ def main(args):
             pass
 
         # put a sleep inside my while loop so I don't peg the cpu usage at 100%
-        time.sleep(int(parsed_args.int))
+        time.sleep(parsed_args.int)
     if exit_flag:
         log_close(time.time()-start_time)
         sys.exit(1)
