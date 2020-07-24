@@ -4,6 +4,7 @@ import sys
 import os
 import argparse
 import logging
+import re
 exit_flag = False
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
@@ -54,7 +55,7 @@ def init_dict(args):
     global file_dict
     if os.path.exists(args.dir):
         for filename in os.listdir(args.dir):
-            file_dict[filename] = 'blank'
+            file_dict[filename] = '0'
     pass
 
 
@@ -62,40 +63,60 @@ def check_files(args):
     global file_dict
     check_dict = {}
     for filename in os.listdir(args.dir):
-        check_dict[filename] = 'blank'
-    if file_dict != check_dict:
-        detect_added_files(check_dict)
-        detect_removed_files(check_dict)
-    file_dict = check_dict
-    scan_dict(args)
+        check_dict[filename] = '0'
+    detect_added_files(check_dict)
+    detect_removed_files(check_dict)
+    if args.magic:
+        scan_dict(args)
     pass
 
 
-def scan_dictargs
+def scan_dict(args):
+    global file_dict
+    for item in file_dict:
+        if re.search(r'\w' + '.' + args.ext, str(item)):
+            scan_file(args, item)
+
+    pass
 
 
-pass
+def scan_file(args, item):
+    with open(args.dir + '/' + item) as f:
+        content = f.readlines()
+        x = int(file_dict.get(item))
+        while x < len(content):
+            if re.search(args.magic, str(content[x])):
+                logger.info('found a match in ' + item +
+                            ' at line ' + str(x+1))
+            x += 1
+        file_dict.update({item: (len(content))})
+    pass
 
 
 def detect_added_files(check_dict):
     for filename in check_dict:
         if filename not in file_dict:
+            file_dict[filename] = 0
             logger.info(filename + ' added to watched directory')
     pass
 
 
 def detect_removed_files(check_dict):
+    remove_list = []
     for filename in file_dict:
         if filename not in check_dict:
+            remove_list.append(filename)
             logger.info(filename + ' removed from watched directory')
+    for item in remove_list:
+        file_dict.pop(item)
     pass
 
 
 def create_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('dir', help='directory to watch')
-    parser.add_argument('--ext', help='file extension to filter')
-    parser.add_argument('--magic', help='magic text to scan for', type=str)
+    parser.add_argument('ext', help='file extension to filter')
+    parser.add_argument('magic', help='magic text to scan for', type=str)
     parser.add_argument('--int', nargs="?", const=1, default=1,
                         type=int, help='polling interval')
     return parser
@@ -132,7 +153,6 @@ def main(args):
     if exit_flag:
         log_close(time.time()-start_time)
         sys.exit(1)
-
 
     # final exit point happens here
     # Log a message that we are shutting down
